@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Typecheck (root — agent + api)
+        run: npx tsc --noEmit
+
+      - name: Install dashboard dependencies
+        working-directory: dashboard
+        run: npm ci
+
+      - name: Typecheck + build dashboard
+        working-directory: dashboard
+        run: npm run build
+
+      - name: Build API Docker image
+        run: docker build -f api/Dockerfile -t repo-ops-api:ci .
+
+      - name: Build agent Docker image
+        run: docker build -f Dockerfile -t repo-ops-agent:ci .
