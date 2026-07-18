@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { Octokit } from "@octokit/rest";
 import dotenv from "dotenv";
+import { logDecision } from "./db.js";
 
 dotenv.config();
 
@@ -78,7 +79,11 @@ const tools: OpenAI.Chat.ChatCompletionTool[] = [
   },
 ];
 
-async function executeTool(name: string, args: any, issueNumber: number): Promise<string> {
+async function executeTool(
+  name: string,
+  args: any,
+  issueNumber: number
+): Promise<{ result: string; accepted: boolean; rejectionReason?: string }> {
   if (name === "search_similar_issues") {
     const { data: issues } = await octokit.issues.listForRepo({
       owner: OWNER, repo: REPO, state: "open", per_page: 50,
@@ -91,7 +96,7 @@ async function executeTool(name: string, args: any, issueNumber: number): Promis
         body: (i.body || "").slice(0, 200),
         created_at: i.created_at,
       }));
-    return JSON.stringify(others);
+    return { result: JSON.stringify(others), accepted: true };
   }
 
   if (name === "mark_duplicate") {
@@ -103,7 +108,8 @@ async function executeTool(name: string, args: any, issueNumber: number): Promis
     });
 
     if (new Date(original.created_at) > new Date(current.created_at)) {
-      return `Rejected: #${args.duplicate_of} was created after this issue, can't be the original`;
+      const reason = `#${args.duplicate_of} was created after this issue, can't be the original`;
+      return { result: `Rejected: ${reason}`, accepted: false, rejectionReason: reason };
     }
 
     await octokit.issues.addLabels({
@@ -113,28 +119,28 @@ async function executeTool(name: string, args: any, issueNumber: number): Promis
       owner: OWNER, repo: REPO, issue_number: issueNumber,
       body: `This looks like a duplicate of #${args.duplicate_of}. ${args.reasoning}`,
     });
-    return `Marked as duplicate of #${args.duplicate_of}`;
+    return { result: `Marked as duplicate of #${args.duplicate_of}`, accepted: true };
   }
 
   if (name === "apply_label") {
     await octokit.issues.addLabels({
       owner: OWNER, repo: REPO, issue_number: issueNumber, labels: [args.label],
     });
-    return `Applied label "${args.label}"`;
+    return { result: `Applied label "${args.label}"`, accepted: true };
   }
 
   if (name === "flag_urgent") {
     await octokit.issues.addLabels({
       owner: OWNER, repo: REPO, issue_number: issueNumber, labels: ["urgent"],
     });
-    return `Flagged as urgent`;
+    return { result: `Flagged as urgent`, accepted: true };
   }
 
   if (name === "request_more_info") {
-    return `Would request more info (logging only, not posting)`;
+    return { result: `Would request more info (logging only, not posting)`, accepted: true };
   }
 
-  return `Unknown tool: ${name}`;
+  return { result: `Unknown tool: ${name}`, accepted: false, rejectionReason: "Unknown tool" };
 }
 
 async function triageIssue(issueNumber: number) {
@@ -174,8 +180,20 @@ async function triageIssue(issueNumber: number) {
     const args = JSON.parse(call.function.arguments || "{}");
     console.log(`Turn ${turn + 1} — model called: ${call.function.name}`, args);
 
-    const result = await executeTool(call.function.name, args, issueNumber);
+    const { result, accepted, rejectionReason } = await executeTool(call.function.name, args, issueNumber);
     console.log(`  -> ${result}`);
+
+    await logDecision({
+      issueNumber,
+      issueTitle: issue.title,
+      turn: turn + 1,
+      toolName: call.function.name,
+      toolArgs: args,
+      reasoning: args.reasoning,
+      result,
+      accepted,
+      rejectionReason,
+    });
 
     if (terminalTools.includes(call.function.name)) {
       return; // done
@@ -190,8 +208,7 @@ async function triageIssue(issueNumber: number) {
 }
 
 async function main() {
-  // Issues 5 & 6 are the duplicate pair (large image upload crash)
-  for (const issueNum of [5, 6]) {
+  for (const issueNum of [1, 5, 6, 9, 10, 11, 12, 13, 14]) {
     await triageIssue(issueNum);
   }
 }
