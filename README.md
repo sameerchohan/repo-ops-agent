@@ -1,9 +1,21 @@
 # Repo Ops Agent
 
-An agentic AI system that triages GitHub issues autonomously — reading new issues, detecting duplicates, applying labels, flagging urgent problems, and deferring on vague reports — using a multi-step tool-calling loop rather than a single prompt-response call. Every decision the agent makes is persisted to Postgres and surfaced in a live React dashboard, so its behavior is auditable, not a black box.
+**[→ Live dashboard](https://repo-ops-agent.vercel.app)** &nbsp;|&nbsp; **[→ Live API](https://repo-ops-agent-production.up.railway.app/api/health)**
 
-**Live dashboard:** https://repo-ops-agent.vercel.app
-**Live API:** https://repo-ops-agent-production.up.railway.app/api/health
+An agentic AI system that triages GitHub issues autonomously — reading new issues, detecting duplicates, applying labels, flagging urgent problems, and deferring on vague reports — using a multi-step tool-calling loop rather than a single prompt-response call.
+
+### How to read this project
+
+This is a live, deployed system — click the dashboard link above to see real
+agent decisions, not a mockup. The most interesting thing to look at first is
+**issue #5** in the dashboard: the agent's own reasoning was factually wrong
+about which of two duplicate issues came first, and a code-level check
+caught and rejected it before any bad label was applied. That case, and why
+the project is built to catch it, is covered in **"Key design decisions"**
+below.
+
+![Dashboard overview](./docs/dashboard-overview.png)
+![Rejected duplicate decision, expanded](./docs/rejected-duplicate.png)
 
 ## Why this project
 
