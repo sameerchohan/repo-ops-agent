@@ -28,7 +28,7 @@ type FilterMode = "all" | "accepted" | "rejected";
 type ConnState = "connecting" | "live" | "disconnected";
 type Theme = "dark" | "light";
 
-const API_BASE = "http://localhost:4000/api";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000/api";
 const POLL_INTERVAL_MS = 8000;
 const THEME_KEY = "ropsTheme";
 

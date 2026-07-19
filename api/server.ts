@@ -8,8 +8,21 @@ dotenv.config();
 const OWNER = process.env.GITHUB_OWNER;
 const REPO = process.env.GITHUB_REPO;
 
+const allowedOrigins = [
+  "https://repo-ops-agent.vercel.app",
+  "http://localhost:5173",
+];
+
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+}));
 app.use(express.json());
 
 // Get all decisions, most recent first
