@@ -77,11 +77,11 @@ One call per issue can't catch duplicates, since the model has no idea what else
 **The model never touches GitHub directly**/
 It only ever returns a tool name and some arguments. All GitHub writes happen in application code, not inside the model's turn. So every action the agent can take is enumerable and reviewable. It can't do anything outside its fixed toolset, no matter what it "decides."/
 
-<u>**Finding #1: a code check caught the model being wrong about a duplicate**</u>\
+**<u>Finding #1: a code check caught the model being wrong about a duplicate</u>**\
 Two issues described the same bug (large image uploads crashing the app). The agent marked issue #5 as a duplicate of #6, reasoning that #6 came first. That reasoning was wrong; #5 was actually the older issue. Because `mark_duplicate` independently re-checks both issues' timestamps, it rejected the bad claim before any label was applied, and logged it with `accepted: false`. On the next run, it correctly flagged #6 as the duplicate of #5.
 *Takeaway: never trust the model's stated reasoning for anything you can verify in code. Prompting reduces mistakes; code prevents them.*/
 
-<u>**Finding #2: a missing tool causes real, logged inconsistency**</u>\
+**<u>Finding #2: a missing tool causes real, logged inconsistency</u>**\
 Issue #14 asks how to reset a password, something already answered in the repo's FAQ. Across two test runs the agent classified it two different ways: `question` once, `enhancement` the next, reasoning the second time that the feature "doesn't seem to exist." That's not flakiness. It's the agent guessing at intent because it has no way to check the FAQ. Concrete, logged case for the `search_docs` tool on the roadmap./
 
 **Terminal vs. non-terminal tools**/
